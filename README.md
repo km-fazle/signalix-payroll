@@ -1,36 +1,35 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Signalix Payroll
 
-## Getting Started
+Administrators upload Zelle screenshots, confirm what was actually paid, and reconcile weekly payroll before it is typed into ADP. Two companies are seeded and cannot see each other.
 
-First, run the development server:
+## Run
+
+Requires Docker, Node.js 24, and a vision-model key.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+make setup   # install, start Supabase CLI 2.119.0, migrate, seed, write .env.local
+make dev     # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Put `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `GOOGLE_API_KEY` in `.env.local` and set `LLM_PROVIDER` to `openai`, `anthropic`, or `google`. `make setup` preserves keys already there. Sample screenshots are in `examples/screenshots` and on the Upload page under Review samples.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Company | Email | Password |
+|---|---|---|
+| Apex Shield Security | mara.chen@apexshield.test | Apex-payroll-2026 |
+| Northline Patrol | ellis.ward@northline.test | Northline-payroll-2026 |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Extraction
 
-## Learn More
+`POST /api/payments/upload` stores each image in a private bucket, then asks the vision model for the payee, amount, payment date, confirmation, note, and hours. The model is instructed to return null rather than guess. The server ignores instructions printed inside a screenshot, keeps amount digits as text, and drops hours unless the note itself prints an hours figure. Pay period is not trusted to the model. A payroll week is Monday–Sunday: `Oct 9, 10, 11` in 2026 becomes `10/05/2026–10/11/2026`. Dates in two weeks, or notes like “last week,” stay unassigned until an administrator picks the week. Employees are matched to the company directory and are never created from a name. A repeated confirmation is saved only if the administrator accepts it, and that copy is excluded from totals.
 
-To learn more about Next.js, take a look at the following resources:
+Nothing is payroll until `POST /api/payments`. `PATCH /api/payments/{id}` either corrects fields or, separately, marks ADP entry. Marking ADP sends no financial fields; the database rejects a reconciliation update that changes them.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Data and security
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+`companies`, `profiles`, `employees`, `payment_screenshots`, `payments`, and `payment_events`. Counted totals live in `payroll_week_summary`, `payroll_month_summary`, and `payroll_totals`. A month is the calendar month of the week’s Sunday. Amounts are `numeric`; the API formats the returned decimal strings and does not add them in JavaScript. Every correction, ADP mark, exclusion, and restore is appended to `payment_events`. The original extraction JSON and screenshot cannot be overwritten.
 
-## Deploy on Vercel
+Row Level Security forces every table to the signed-in profile’s company. The browser uses the anon key and the user session. The service role is used only by the seed script and is not a `NEXT_PUBLIC` variable. Screenshots are in a private bucket keyed by company id. Signup is disabled.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Tradeoffs
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The vision step can be wrong, so a person confirms every payment and missing fields stay blank. Hours that appear only as a figure outside the note are not prefilled. Duplicate confirmations are kept as evidence instead of deleted, and they do not count. The CSV is a reconciliation report (employee, payroll period, total, hours, ADP status), not an ADP import file. There is no ADP submission, tax calculation, or employee self-service.
