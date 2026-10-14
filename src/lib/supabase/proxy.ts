@@ -29,6 +29,8 @@ export async function updateSession(request: NextRequest) {
   if (!data.user && !isLogin && !path.startsWith("/api")) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    url.search = "";
+    if (path.startsWith("/") && !path.startsWith("//")) url.searchParams.set("next", path);
     const redirect = NextResponse.redirect(url);
     response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
     return redirect;
@@ -36,7 +38,9 @@ export async function updateSession(request: NextRequest) {
 
   if (data.user && isLogin) {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    const next = request.nextUrl.searchParams.get("next");
+    url.pathname = next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+    url.search = "";
     const redirect = NextResponse.redirect(url);
     response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
     return redirect;

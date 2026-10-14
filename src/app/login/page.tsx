@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
 
@@ -11,8 +11,14 @@ const DEMOS = [
   ["Northline Patrol", "ellis.ward@northline.test", "Northline-payroll-2026"],
 ];
 
-export default function LoginPage() {
+function destination(value: string | null) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/";
+  return value;
+}
+
+function SignInForm() {
   const router = useRouter();
+  const next = destination(useSearchParams().get("next"));
   const [email, setEmail] = useState(DEMOS[0][1]);
   const [password, setPassword] = useState(DEMOS[0][2]);
   const [error, setError] = useState("");
@@ -29,7 +35,7 @@ export default function LoginPage() {
       setError("Those credentials were not recognized.");
       return;
     }
-    router.push("/");
+    router.push(next);
     router.refresh();
   }
 
@@ -40,11 +46,7 @@ export default function LoginPage() {
           <span className="mark" aria-hidden />
           <span>Signalix<small>Payroll</small></span>
         </Link>
-        <div>
-          <p className="eyebrow">Administrator</p>
-          <h1>Sign in</h1>
-          <p className="lede">Review screenshots, confirm the payroll week, and export what still needs to be entered in ADP.</p>
-        </div>
+        <h1>Sign in</h1>
         <label className="field">
           <span className="field-label">Email</span>
           <input className="control" type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required />
@@ -56,7 +58,7 @@ export default function LoginPage() {
         {error ? <p className="banner">{error}</p> : null}
         <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
         <div className="demo">
-          <span className="eyebrow">Local companies</span>
+          <span className="field-label">Companies</span>
           {DEMOS.map(([company, demoEmail, demoPassword]) => (
             <button
               key={demoEmail}
@@ -76,5 +78,13 @@ export default function LoginPage() {
         </div>
       </form>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="boot">Loading sign in…</div>}>
+      <SignInForm />
+    </Suspense>
   );
 }

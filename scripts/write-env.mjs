@@ -38,6 +38,8 @@ const local = [
   `OPENAI_MODEL=${keep("OPENAI_MODEL") || "gpt-4o"}`,
   `ANTHROPIC_MODEL=${keep("ANTHROPIC_MODEL") || "claude-sonnet-4-5"}`,
   `GOOGLE_MODEL=${keep("GOOGLE_MODEL") || "gemini-2.5-flash"}`,
+  `EXTRACTION_MODE=${keep("EXTRACTION_MODE") || "local"}`,
+  `ALLOW_CLOUD_EXTRACTION=${keep("ALLOW_CLOUD_EXTRACTION") || "false"}`,
   "",
 ].join("\n");
 

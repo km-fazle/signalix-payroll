@@ -212,9 +212,9 @@ export default function PaymentDetailPage() {
       <div className="container stack">
         <div className="page-head">
           <div>
-            <p className="eyebrow"><Link href="/payments">Payments</Link></p>
+            <Link className="back" href="/payments">Payments</Link>
             <h1>{payment.employee_name}</h1>
-            <p className="lede">Paid on {payment.transaction_date}. Payroll week {payment.period_start}–{payment.period_end}. {payment.counts_toward_totals ? "This payment is included in totals." : "This payment is not included in totals."}</p>
+            <p className="lede">Paid {payment.transaction_date}. Week {payment.period_start}–{payment.period_end}.</p>
           </div>
           {payment.status === "confirmed" && payment.counts_toward_totals ? (
             <button className="btn btn-primary" type="button" disabled={busy} onClick={markEntered}>Mark entered in ADP</button>
@@ -234,7 +234,7 @@ export default function PaymentDetailPage() {
         />
         <section className="split">
           <div className="card" style={{ padding: 20 }}>
-            <p className="eyebrow">History</p>
+            <h2>History</h2>
             <div className="timeline">
               {events.map((event) => (
                 <article key={event.id}>
@@ -246,7 +246,7 @@ export default function PaymentDetailPage() {
             </div>
           </div>
           <div className="card" style={{ padding: 20 }}>
-            <p className="eyebrow">Exclude from totals</p>
+            <h2>Exclude</h2>
             {payment.status === "void" ? (
               <button className="btn btn-secondary" type="button" disabled={busy} onClick={restore}>Restore to payroll</button>
             ) : (
@@ -258,7 +258,7 @@ export default function PaymentDetailPage() {
                 <button className="btn btn-outline" type="button" disabled={busy || reason.trim().length < 3} onClick={exclude}>Exclude from payroll</button>
               </div>
             )}
-            <p className="field-hint" style={{ marginTop: 12 }}>The screenshot stays attached. Nothing is deleted.</p>
+            <p className="field-hint" style={{ marginTop: 12 }}>The screenshot stays attached.</p>
             <button className="btn btn-outline" type="button" style={{ marginTop: 16 }} onClick={() => router.push("/payments")}>Back to payments</button>
           </div>
         </section>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { PaymentEditor, valuesFromReview, type EditorValues } from "@/components/payment-editor";
 import { api } from "@/lib/browser";
@@ -29,6 +29,17 @@ export default function UploadPage() {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [active, setActive] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [cloudAllowed, setCloudAllowed] = useState(false);
+  const [sendCloud, setSendCloud] = useState(false);
+
+  useEffect(() => {
+    api<{ cloud_extraction: boolean }>("/api/payments/upload")
+      .then((body) => setCloudAllowed(body.cloud_extraction))
+      .catch(() => setCloudAllowed(false));
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+    }
+  }, []);
 
   async function upload(files: File[]) {
     if (!files.length) return;
@@ -36,6 +47,7 @@ export default function UploadPage() {
     setError("");
     const form = new FormData();
     files.forEach((file) => form.append("files", file));
+    if (sendCloud) form.append("destination", "cloud");
     try {
       const body = await api<{ uploads: UploadReview[]; failures: Array<{ file_name: string; error: string }>; employees: EmployeeOption[] }>("/api/payments/upload", {
         method: "POST",
@@ -109,9 +121,8 @@ export default function UploadPage() {
       <div className="container stack">
         <div className="page-head">
           <div>
-            <p className="eyebrow">Intake</p>
-            <h1>Upload screenshots</h1>
-            <p className="lede">Add one or several Zelle confirmations. Names, amounts, dates, and notes are read from the image. Nothing is added to payroll until you confirm it.</p>
+            <h1>Upload</h1>
+            <p className="lede">Take a photo or choose from the library.</p>
           </div>
         </div>
         <div
@@ -127,16 +138,49 @@ export default function UploadPage() {
             void upload([...event.dataTransfer.files]);
           }}
         >
-          <strong>{busy ? "Reading screenshots…" : "Drop payment screenshots"}</strong>
-          <p>PNG, JPEG, or WebP. Up to eight images.</p>
-          <div className="btn-row">
+          <strong>{busy ? "Reading…" : "Screenshot"}</strong>
+          <p>Up to eight images.</p>
+          <div className="btn-row capture-actions">
             <label className="btn btn-primary">
-              Choose files
-              <input className="file-input" type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={(event) => void upload([...(event.target.files ?? [])])} />
+              Take photo
+              <input
+                className="file-input"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                disabled={busy}
+                onChange={(event) => {
+                  const picked = [...(event.target.files ?? [])];
+                  event.target.value = "";
+                  void upload(picked);
+                }}
+              />
             </label>
-            <button className="btn btn-secondary" type="button" disabled={busy} onClick={() => void loadSamples()}>Review samples</button>
+            <label className="btn btn-secondary">
+              Photo library
+              <input
+                className="file-input"
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/heic,image/heif"
+                multiple
+                disabled={busy}
+                onChange={(event) => {
+                  const picked = [...(event.target.files ?? [])];
+                  event.target.value = "";
+                  void upload(picked);
+                }}
+              />
+            </label>
+            <button className="btn btn-outline sample-button" type="button" disabled={busy} onClick={() => void loadSamples()}>Review samples</button>
           </div>
         </div>
+        <p className="field-hint">Read on this server. The image is not sent out.</p>
+        {cloudAllowed ? (
+          <label className="choice">
+            <input type="checkbox" checked={sendCloud} onChange={(event) => setSendCloud(event.target.checked)} />
+            <span>Send this upload to the vision provider. Leave this off to keep the screenshot on the server.</span>
+          </label>
+        ) : null}
         {error ? <p className="banner">{error}</p> : null}
         {drafts.length > 1 ? (
           <div className="btn-row">
@@ -150,7 +194,7 @@ export default function UploadPage() {
         {draft?.savedId ? (
           <div className="panel">
             <h2>Payment saved</h2>
-            <p className="lede">It counts toward the payroll week you confirmed, unless you kept it as a duplicate.</p>
+            <p className="lede">Saved for the week you confirmed.</p>
             <div className="btn-row" style={{ marginTop: 16 }}>
               <button className="btn btn-primary" type="button" onClick={() => router.push(`/payments/${draft.savedId}`)}>Open payment</button>
               <button className="btn btn-outline" type="button" onClick={() => router.push("/payroll")}>See payroll</button>
@@ -171,7 +215,7 @@ export default function UploadPage() {
             />
           </>
         ) : null}
-        {!drafts.length && !busy ? <div className="empty">Nothing is waiting for review. A payment is not final until you confirm the employee, amount, payment date, and payroll week.</div> : null}
+        {!drafts.length && !busy ? <div className="empty">No screenshots waiting.</div> : null}
       </div>
     </div>
   );

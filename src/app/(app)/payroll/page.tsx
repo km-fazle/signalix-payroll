@@ -89,11 +89,7 @@ export default function PayrollPage() {
     <div className="page">
       <div className="container stack">
         <div className="page-head">
-          <div>
-            <p className="eyebrow">Reconciliation</p>
-            <h1>Payroll totals</h1>
-            <p className="lede">Weekly totals follow Monday–Sunday payroll weeks. Monthly totals use the month of that week’s Sunday, so a week that ends in October counts in October even if work started in September. Exporting does not change any payment.</p>
-          </div>
+          <h1>Payroll</h1>
           <button className="btn btn-primary" type="button" disabled={!summary || exporting} onClick={() => void exportCsv()}>
             {exporting ? "Preparing…" : "Export CSV"}
           </button>
@@ -114,7 +110,7 @@ export default function PayrollPage() {
               <div className="stat"><span>Recorded hours</span><strong>{summary.totals.recorded_hours ?? "—"}</strong><em>{summary.totals.missing_hours_count ? `${summary.totals.missing_hours_count} missing` : "Complete"}</em></div>
               <div className="stat"><span>ADP</span><strong>{summary.totals.entered_count}/{summary.totals.payment_count}</strong><em>{summary.totals.awaiting_count} awaiting</em></div>
             </section>
-            {summary.rows.length === 0 ? <div className="empty">No counted payments in this {range.granularity}.</div> : (
+            {summary.rows.length === 0 ? <div className="empty">No payments in this {range.granularity}.</div> : (
               <div className="table-wrap">
                 <table className="responsive">
                   <thead>

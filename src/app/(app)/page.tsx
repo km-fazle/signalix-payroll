@@ -51,43 +51,35 @@ export default function OverviewPage() {
   }, []);
 
   return (
-    <>
-      <section className="hero">
-        <div className="container">
-          <p className="crumbs">Signalix <span>/</span> Payroll</p>
-          <h1>This week is ready to <em>reconcile.</em></h1>
-          <p className="deck">
-            {company} can check each screenshot, keep the payment date separate from the payroll week, and see what still has to be typed into ADP.
-          </p>
-          <div className="badges">
-            <span className="badge">Private screenshots</span>
-            <span className="badge">Exact totals</span>
-            <span className="badge">ADP reconciliation</span>
+    <div className="page">
+      <div className="container stack">
+        <div className="page-head">
+          <div>
+            <h1>This week</h1>
+            <p className="lede">{company}{summary ? ` · ${formatWeek(summary.from, summary.to)}` : ""}</p>
+          </div>
+          <div className="btn-row">
+            <Link className="btn btn-outline" href="/employees">Employees</Link>
+            <Link className="btn btn-primary" href="/upload">Upload</Link>
           </div>
         </div>
-      </section>
-      <div className="page">
-        <div className="container" style={{ display: "grid", gap: 32 }}>
           {error ? <p className="banner">{error}</p> : null}
-          {!summary && !error ? <p className="empty">Loading this payroll week…</p> : null}
+          {!summary && !error ? <p className="empty">Loading this week…</p> : null}
           {summary ? (
             <>
               <section className="stat-row" aria-label="This payroll week">
-                <div className="stat"><span>Payroll week total</span><strong>{money(summary.totals.total_amount)}</strong><em>{formatWeek(summary.from, summary.to)}</em></div>
-                <div className="stat"><span>Payments counted</span><strong>{summary.totals.payment_count}</strong><em>Duplicates stay out</em></div>
-                <div className="stat"><span>Awaiting ADP</span><strong>{summary.totals.awaiting_count}</strong><em>Confirmed, not entered</em></div>
-                <div className="stat"><span>Hours recorded</span><strong>{summary.totals.recorded_hours ?? "—"}</strong><em>{summary.totals.missing_hours_count ? `${summary.totals.missing_hours_count} payments have no hours` : "Every counted payment has hours"}</em></div>
+                <div className="stat"><span>Week total</span><strong>{money(summary.totals.total_amount)}</strong></div>
+                <div className="stat"><span>Payments</span><strong>{summary.totals.payment_count}</strong></div>
+                <div className="stat"><span>Awaiting ADP</span><strong>{summary.totals.awaiting_count}</strong></div>
+                <div className="stat"><span>Hours</span><strong>{summary.totals.recorded_hours ?? "—"}</strong><em>{summary.totals.missing_hours_count ? `${summary.totals.missing_hours_count} missing` : "Complete"}</em></div>
               </section>
               <section className="panel">
                 <div className="section-head">
-                  <div>
-                    <p className="eyebrow">By employee</p>
-                    <h2>Payroll week, not payment date</h2>
-                  </div>
-                  <Link className="btn btn-outline" href="/payroll">Open payroll</Link>
+                  <h2>By employee</h2>
+                  <Link className="btn btn-outline" href="/payroll">Payroll</Link>
                 </div>
                 {summary.rows.length === 0 ? (
-                  <div className="empty">No counted payments in this week yet. Upload a screenshot to add one.</div>
+                  <div className="empty">No payments this week.</div>
                 ) : (
                   <div className="table-wrap">
                     <table className="responsive">
@@ -97,7 +89,7 @@ export default function OverviewPage() {
                       <tbody>
                         {summary.rows.map((row) => (
                           <tr key={row.employee_id}>
-                            <td data-label="Employee"><span className="name">{row.employee_name}</span><span className="sub">{row.employee_code}</span></td>
+                            <td data-label="Employee"><Link className="person-link" href={`/employees/${row.employee_id}`}>{row.employee_name}</Link><span className="sub">{row.employee_code}</span></td>
                             <td className="num" data-label="Total">{money(row.total_amount)}</td>
                             <td className="num" data-label="Hours">{row.recorded_hours ?? "—"}{row.payments_missing_hours ? <span className="sub">Incomplete</span> : null}</td>
                             <td className="num" data-label="Payments">{row.payment_count}</td>
@@ -109,16 +101,12 @@ export default function OverviewPage() {
                   </div>
                 )}
               </section>
-              <section>
+              <section className="panel">
                 <div className="section-head">
-                  <div>
-                    <p className="eyebrow">Reconciliation</p>
-                    <h2>All payments awaiting ADP</h2>
-                  </div>
-                  <Link className="btn btn-primary" href="/upload">Upload screenshots</Link>
+                  <h2>Awaiting ADP</h2>
                 </div>
                 {awaiting.length === 0 ? (
-                  <div className="empty">Nothing is waiting. Confirmed payments in this company have been marked entered, or none are confirmed yet.</div>
+                  <div className="empty">Nothing awaiting ADP.</div>
                 ) : (
                   <div className="table-wrap">
                     <table className="responsive">
@@ -142,8 +130,7 @@ export default function OverviewPage() {
               </section>
             </>
           ) : null}
-        </div>
       </div>
-    </>
+    </div>
   );
 }

@@ -48,11 +48,7 @@ export default function PaymentsPage() {
     <div className="page">
       <div className="container">
         <div className="page-head">
-          <div>
-            <p className="eyebrow">Ledger</p>
-            <h1>Payments</h1>
-            <p className="lede">Paid on is the transfer date. The payroll week is the Monday–Sunday period the work belongs to. A duplicate confirmation stays visible and is left out of totals.</p>
-          </div>
+          <h1>Payments</h1>
           <Link className="btn btn-primary" href="/upload">Upload</Link>
         </div>
         <div className="filters">

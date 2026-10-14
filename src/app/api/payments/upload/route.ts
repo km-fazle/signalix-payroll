@@ -1,5 +1,8 @@
 import { todayInTimeZone } from "@/lib/dates";
+import { outboundImage, privateImage } from "@/lib/extract/image";
 import { interpretModel } from "@/lib/extract/interpret";
+import { extractLocally } from "@/lib/extract/local";
+import { cloudExtractionEnabled } from "@/lib/extract/privacy";
 import { extractPayment } from "@/lib/extract/vision";
 import { requireUser } from "@/lib/http";
 import { formatStoredAmount } from "@/lib/money";
@@ -10,22 +13,15 @@ export const maxDuration = 60;
 const MAX_FILES = 8;
 const MAX_BYTES = 8 * 1024 * 1024;
 
-function sniff(bytes: Buffer): { mime: "image/png" | "image/jpeg" | "image/webp"; ext: string } | null {
-  if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
-    return { mime: "image/png", ext: "png" };
-  }
-  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
-    return { mime: "image/jpeg", ext: "jpg" };
-  }
-  if (bytes.length >= 12 && bytes.toString("ascii", 0, 4) === "RIFF" && bytes.toString("ascii", 8, 12) === "WEBP") {
-    return { mime: "image/webp", ext: "webp" };
-  }
-  return null;
-}
-
 function safeName(name: string): string {
   const cleaned = name.replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 80);
   return cleaned || "screenshot";
+}
+
+export async function GET() {
+  const { errorResponse } = await requireUser();
+  if (errorResponse) return errorResponse;
+  return Response.json({ cloud_extraction: cloudExtractionEnabled() });
 }
 
 export async function POST(request: Request) {
@@ -54,6 +50,7 @@ export async function POST(request: Request) {
 
   const reviews: UploadReview[] = [];
   const failures: Array<{ file_name: string; error: string }> = [];
+  const sendToProvider = form?.get("destination") === "cloud" && cloudExtractionEnabled();
 
   for (const file of files) {
     const fileName = safeName(file.name);
@@ -61,19 +58,25 @@ export async function POST(request: Request) {
       failures.push({ file_name: file.name, error: "Screenshots must be smaller than 8 MB." });
       continue;
     }
-    const bytes = Buffer.from(await file.arrayBuffer());
-    const kind = sniff(bytes);
-    if (!kind) {
-      failures.push({ file_name: file.name, error: "Use a PNG, JPEG, or WebP image." });
+    const original = Buffer.from(await file.arrayBuffer());
+    const stored = await privateImage(original);
+    if (!stored) {
+      failures.push({ file_name: file.name, error: "Use a PNG, JPEG, or WebP photo. iPhone photos are converted when the phone allows it." });
       continue;
     }
 
     const screenshotId = crypto.randomUUID();
-    const storagePath = `${profile.company_id}/${screenshotId}.${kind.ext}`;
+    const storagePath = `${profile.company_id}/${screenshotId}.${stored.ext}`;
     let model = null;
     let extractionError: string | null = null;
+    const mode = sendToProvider ? "cloud" : "local";
     try {
-      model = await extractPayment(bytes, kind.mime);
+      if (sendToProvider) {
+        const outbound = await outboundImage(stored.bytes);
+        model = await extractPayment(outbound.bytes, outbound.mime);
+      } else {
+        model = await extractLocally(stored.bytes);
+      }
     } catch (error) {
       extractionError = error instanceof Error ? error.message : "The screenshot could not be read.";
     }
@@ -101,8 +104,8 @@ export async function POST(request: Request) {
       }
     }
 
-    const uploaded = await supabase.storage.from("payment-screenshots").upload(storagePath, bytes, {
-      contentType: kind.mime,
+    const uploaded = await supabase.storage.from("payment-screenshots").upload(storagePath, stored.bytes, {
+      contentType: stored.mime,
       upsert: false,
     });
     if (uploaded.error) {
@@ -127,9 +130,9 @@ export async function POST(request: Request) {
       company_id: profile.company_id,
       storage_path: storagePath,
       file_name: fileName,
-      mime_type: kind.mime,
-      byte_size: bytes.length,
-      extraction: { model, warnings: review.warnings, fields: review.fields },
+      mime_type: stored.mime,
+      byte_size: stored.bytes.length,
+      extraction: { mode, model, warnings: review.warnings, fields: review.fields },
       uploaded_by: user.id,
     });
     if (inserted.error) {

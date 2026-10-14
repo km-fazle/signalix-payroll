@@ -10,6 +10,25 @@ export type EmployeeOption = {
   role_title: string | null;
 };
 
+export type EmployeeRecord = EmployeeOption & {
+  phone: string | null;
+  email: string | null;
+  notes: string;
+};
+
+export type EmployeeNote = {
+  id: string;
+  body: string;
+  created_at: string;
+};
+
+export type HourTotals = {
+  total_amount: string;
+  recorded_hours: string | null;
+  payment_count: number;
+  missing_hours_count: number;
+};
+
 export type PeriodCandidate = {
   start: string;
   end: string;
